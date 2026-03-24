@@ -1,6 +1,19 @@
 library(pROC)
 
-## LTBT
+#' likelihood of an individual being a case given being a carrier 
+#' 
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#' 
+#' @param prs polygenic risk score of carrier
+#' 
+#' @param b adjustment for effect size from the baseline gamma (1 if no adjustment neeed)
+#' 
+#' @param Kprev.x prevalence of case in population
+#' 
+#' @param h2.prs.x heritability explained by PRS (h2L[x])
+#' 
+#' @return log likelihood values
+#'
 lik.case <- function (gamma.seq, prs, b, Kprev.x, h2.prs.x) {
     tau.std <- qnorm(1 - Kprev.x, mean=0, sd=1)
 
@@ -24,6 +37,18 @@ lik.case <- function (gamma.seq, prs, b, Kprev.x, h2.prs.x) {
     lik
 }
 
+#' likelihood of being a carrier individual being a case 
+#' 
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#' 
+#' @param genofreq frequency of carrier in populations
+#' 
+#' @param b adjustment for effect size from the baseline gamma (1 if no adjustment neeed)
+#' 
+#' @param Kprev.x prevalence of case in population
+#' 
+#' @return likelihood values
+#'
 case.x <- function (gamma.seq, genofreq, b, Kprev.x) {
     tau.std <- qnorm(1 - Kprev, mean=0, sd=1)
 
@@ -34,6 +59,20 @@ case.x <- function (gamma.seq, genofreq, b, Kprev.x) {
     x * genofreq
 }
 
+#' likelihood of an individual being a control given being a carrier
+#'
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#'
+#' @param prs polygenic risk score of carrier
+#'
+#' @param b adjustment for effect size from the baseline gamma (1 if no adjustment neeed)
+#'
+#' @param Kprev.x prevalence of case in population
+#'
+#' @param h2.prs.x heritability explained by PRS (h2L[x])
+#'
+#' @return log likelihood values
+#'
 lik.ctrl <- function (gamma.seq, prs, b, Kprev.x, h2.prs.x) {
     tau.std <- qnorm(1 - Kprev.x, mean=0, sd=1)
 
@@ -57,6 +96,18 @@ lik.ctrl <- function (gamma.seq, prs, b, Kprev.x, h2.prs.x) {
     lik
 }
 
+#' likelihood of being a carrier individual being a control 
+#'
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#'
+#' @param frequency of carriers in population
+#'
+#' @param b adjustment for effect size from the baseline gamma (1 if no adjustment neeed)
+#'
+#' @param Kprev.x prevalence of case in population
+#'
+#' @return likelihood values
+#'
 ctrl.x <- function (gamma.seq, genofreq, b, Kprev.x) {
     tau.std <- qnorm(1 - Kprev.x, mean=0, sd=1)
 
@@ -67,6 +118,22 @@ ctrl.x <- function (gamma.seq, genofreq, b, Kprev.x) {
     x * genofreq
 }
 
+#' Frequency of carriers of all functional rare variants. Maximum likelihood estimator was used to account for the case/control ascertainment
+#' 
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#'
+#' @param Kprev.x prevalence of case in population
+#'
+#' @param p0 ascertainment ratio for control, i.e., Pcontrol / (1 - K) 
+#'
+#' @param p1 ascertainment ratio for case, i.e., Pcase / K
+#' 
+#' @param n.mut number of carriers in case/control
+#' 
+#' @param n number of all subjects in case/control
+#'
+#' @return most likely estimate of frequency of carriers in population
+#'
 caf.mle <- function (gamma.seq, Kprev.x, p0, p1, n.mut, n) {
     tau.std <- qnorm(1 - Kprev.x, mean=0, sd=1)
 
@@ -80,6 +147,22 @@ caf.mle <- function (gamma.seq, Kprev.x, p0, p1, n.mut, n) {
 }
 
 
+#' Likelihood Ratio Test of liability threshold burden test (LTBT)
+#' 
+#' @param gamma.seq assumed rare-variant effect sizes (gamma)
+#' 
+#' @param gt genotype vector of cohort (0: non-carrier, 1: carrier)
+#' 
+#' @param prs polygenic risk score of carrier
+#' 
+#' @param outcome outcome vector of cohort (0: control, 1: case)
+#' 
+#' @param Kprev.x prevalence of case in population
+#' 
+#' @param h2.prs.x heritability explained by PRS (h2L[x]). Estimated from cohort if it is left as NULL.
+#' 
+#' @return LTBT test results
+#' @export  
 lrt.fe.2df <- function (gamma.seq, gt, prs, outcome, Kprev.x, h2.prs.x=NULL) {
 
     stopifnot("matrix" %in% class(gt))
