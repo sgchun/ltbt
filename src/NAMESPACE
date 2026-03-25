@@ -1,0 +1,3 @@
+importFrom("stats", "dnorm", "pchisq", "pnorm", "qnorm")
+importFrom("pROC", "auc", "roc")
+exportPattern("^[[:alpha:]]+")

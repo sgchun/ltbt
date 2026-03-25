@@ -1,0 +1,14 @@
+Package: ltbt
+Type: Package
+Title: Liability Threshold Burden Test (LTBT)
+Version: 1.0
+Authors@R: c(person("Sung", "Chun", role = c("aut", "cre"),
+	         email = "sung.g.chun@gmail.com"))
+Author: Sung Chun [aut, cre]
+Maintainer: Sung Chun <sung.g.chun@gmail.com>
+Description: It implements a rare-variant burden test integrating polygenic risk score and rare-variant burden under a liability threshold model.
+License: GPL
+Depends: R (>= 3.6.0), pROC
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
