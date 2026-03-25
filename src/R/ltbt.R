@@ -163,10 +163,18 @@ caf.mle <- function (gamma.seq, Kprev.x, p0, p1, n.mut, n) {
 #' 
 #' @return LTBT test results
 #' @export  
-lrt.fe.2df <- function (gamma.seq, gt, prs, outcome, Kprev.x, h2.prs.x=NULL) {
+run.ltbt <- function (gamma.seq, gt, prs, outcome, Kprev.x, h2.prs.x=NULL) {
 
-    stopifnot("matrix" %in% class(gt))
-    stopifnot(nrow(gt) == length(outcome))
+    if ("matrix" %in% class(gt)) {
+        stopifnot(nrow(gt) == length(outcome))
+    } else if (is.vector(gt)) {
+        stopifnot(length(gt) == length(outcome))
+
+        # to N x 1 matrix
+        gt.m <- matrix(0, nrow=length(gt), ncol=1)
+        gt.m[, 1] <- gt
+        gt <- gt.m
+    }
     stopifnot(length(prs) == length(outcome))
 
     gamma0.idx <- which(gamma.seq == 0)
