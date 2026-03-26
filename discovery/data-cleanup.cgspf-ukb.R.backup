@@ -1,0 +1,598 @@
+library(data.table)
+source("../sim2/ltbt.R")
+
+ukbpre <- "/lab-share/Pulmonary-Chun-e2/Public/data/ukb/wes500k/"
+
+files <- list.files(paste(ukbpre, "ukbvep/", sep=''))
+files <- files[grep("probdam_all.csv", files)]
+
+gtfiles <- gsub("probdam_all.csv", "QC.probdam.gt", files)
+
+ukb <- NULL
+
+for (I in 1:length(files)) {
+    FL <- files[I]
+    print(FL)
+    ukb0 <- read.csv(paste(ukbpre, "ukbvep/", FL, sep=''),
+                     stringsAsFactors=FALSE)
+    FL <- gtfiles[I]
+    print(FL)
+    ukbgt0 <-
+        read.delim(paste(ukbpre, "ukbgt/probdam/", FL, sep=''), 
+                   sep="\t", header=FALSE, stringsAsFactors=FALSE)
+
+    stopifnot(nrow(ukb0) == nrow(ukbgt0))
+    
+    ukb <- rbind(ukb, cbind(ukb0,
+                            qual=ukbgt0[, 1],
+                            het=ukbgt0[, 2],
+                            homalt=ukbgt0[, 3],
+                            stringsAsFactors=FALSE))
+}
+
+rm(ukb0)
+rm(ukbgt0)
+gc()
+
+alleles <- gsub(" ", "", gsub("'", "", ukb$alleles))
+alleles <- sapply(alleles, function (alstr) {
+       strsplit(substr(alstr, 2, nchar(alstr) - 1), ",")
+   })
+n.alleles <- sapply(alleles, function (al) {
+       length(al)
+   }, simplify=TRUE)
+stopifnot(all(n.alleles == 2))
+A1 <- sapply(alleles, function (al) {
+       al[1]
+   }, simplify=TRUE)
+A2 <- sapply(alleles, function (al) {
+       al[2]
+   }, simplify=TRUE)
+
+keys <- paste(ukb$locus.contig, ukb$locus.position, A1, A2, sep="_")
+ukb <- cbind(ukb, key=keys, stringsAsFactors=FALSE)
+ukb <- as.data.table(ukb)
+setkey(ukb, key)
+dim(ukb)
+
+# qcfail: ukb
+files.qc <- list.files(paste(ukbpre, "ukbqcfail/", sep=''))
+
+ukb.qcfail.key <- c()
+
+for (FL in files.qc) {
+  print(FL)
+  qcfail0 <-
+    read.csv(paste(ukbpre, "ukbqcfail/", FL, sep=''),
+             stringsAsFactors=FALSE)$rsid
+
+  qcfail0 <- unlist(strsplit(qcfail0, ";", fixed=TRUE))
+
+  ukb.qcfail.key <- c(ukb.qcfail.key, qcfail0)
+}
+
+rm(qcfail0)
+gc()
+
+length(ukb.qcfail.key)
+
+########################################################################
+## gnomAD
+
+gnomad <- NULL
+
+for (I in 1:22) {
+    file <- paste("~/data/gnomad/2.1.1.liftover/",
+                  "gnomad.exomes.r2.1.1.sites.", I,
+                  ".liftover_grch38.probdam.popmax.tsv.gz", sep='')
+    gnomad0 <- read.delim(file ,sep=" ", stringsAsFactors=FALSE, header=FALSE)
+
+    gnomad <- rbind(gnomad, gnomad0)
+}
+
+colnames(gnomad)[1:6] <- c("CHRBP", "SNPID", "REF", "ALT", "FILTER", "POPMAX")
+
+key <- paste(gsub(":", "_", gnomad$CHRBP, fixed=TRUE),
+             gnomad$REF, gnomad$ALT,
+             sep="_")
+
+gnomad <- cbind(gnomad, key, stringsAsFactors=FALSE)
+gnomad$POPMAX <- as.numeric(gnomad$POPMAX)
+
+gnomad <- gnomad[!is.na(gnomad$POPMAX), ]
+
+########################################################################
+# IPF
+ipf <- read.csv("../qc/fibrosis_only.freeze_121521.white_probands.ukb_exome_bed.probdam.csv", stringsAsFactors=FALSE)
+
+ipf <- ipf[, -which(colnames(ipf) %in% c("homref", "het", "homvar"))]
+dim(ipf)
+
+ipfgt <- read.delim("../qc/fibrosis_only.freeze_121521.white_probands.ukb_exome_bed.QC136.probdam.gt.gz", sep="\t", header=FALSE, stringsAsFactors=FALSE)
+
+stopifnot(nrow(ipf) == nrow(ipfgt))
+    
+ipf <- cbind(ipf,
+             qual=ipfgt[, 1],
+             het=ipfgt[, 2],
+             homalt=ipfgt[, 3],
+             stringsAsFactors=FALSE)
+rm(ipfgt)
+gc()
+
+qcfail.ipf <-
+    read.csv("../qc/fibrosis_only.freeze_121521.white_probands.ukb_exome_bed.qcfail.csv", stringsAsFactors=FALSE)$rsid
+qcfail.ipf <- unlist(strsplit(qcfail.ipf, ";", fixed=TRUE))
+length(qcfail.ipf)
+
+ipf <- ipf[ipf$locus.contig != "chrX", ]
+dim(ipf)
+
+alleles <- gsub(" ", "", gsub("'", "", ipf$alleles))
+alleles <- sapply(alleles, function (alstr) {
+       strsplit(substr(alstr, 2, nchar(alstr) - 1), ",")
+   })
+n.alleles <- sapply(alleles, function (al) {
+       length(al)
+   }, simplify=TRUE)
+stopifnot(all(n.alleles == 2))
+A1 <- sapply(alleles, function (al) {
+       al[1]
+   }, simplify=TRUE)
+A2 <- sapply(alleles, function (al) {
+       al[2]
+   }, simplify=TRUE)
+
+keys <- paste(ipf$locus.contig, ipf$locus.position, A1, A2, sep="_")
+ipf <- cbind(ipf, key=keys, stringsAsFactors=FALSE)
+
+## Exclude QC-failed sites
+ipf.exclude <- which(ipf$key %in% ukb.qcfail.key)
+length(ipf.exclude)
+
+ipf <- ipf[ -ipf.exclude, ]
+dim(ipf)
+
+ukb.exclude <- which(ukb$key %in% qcfail.ipf)
+length(ukb.exclude)
+
+ukb <- ukb[ -ukb.exclude, ]
+dim(ukb)
+
+#####
+## recount AC
+AC.new <-
+    sapply(ipf$het,
+           function(x) length(strsplit(x, ",", fixed=TRUE)[[1]]),
+           simplify=TRUE)
+AC.new <- AC.new +
+    sapply(ipf$homalt,
+           function(x) length(strsplit(x, ",", fixed=TRUE)[[1]]),
+           simplify=TRUE) * 2
+
+# plot(ipf$AC, AC.new, pch=19, cex=0.2)
+# abline(0, 1)
+
+ipf$AC <- AC.new
+range(ipf$AC)
+
+ipf <- ipf[ipf$AC > 0, ]
+dim(ipf)
+
+############
+## by QUAL
+## qual.co <- 29
+## mean(ipf$qual >= qual.co)
+## mean(ukb$qual >= qual.co)
+
+## sum(ipf$qual >= qual.co)
+## sum(ukb$qual >= qual.co)
+
+## hist(ipf$qual, breaks=100, xlim=c(0, 100))
+## abline(v=qual.co)
+
+## hist(ukb$qual, breaks=100, xlim=c(0, 100))
+## abline(v=qual.co)
+
+## novel <- c()
+## for (binstart in seq(10, 50, 5)) {
+##     novel <- c(novel, 
+##         sum(ipf$qual >= binstart & ipf$qual < (binstart + 5) &
+##             ipf$ukbaf == 0) /
+##         sum(ipf$qual >= binstart & ipf$qual < (binstart + 5))
+##         )
+## }
+## plot(seq(10, 50, 5) + 2.5, novel, ty='b', ylim=c(0, max(novel)),
+##      xlab="Variant Quality Score", ylab="Fraction of Novel Variants in UKB")
+## abline(v=qual.co)
+
+## ipf <- ipf[ipf$qual >= qual.co, ]
+## dim(ipf)
+
+## ukb <- ukb[ukb$qual >= qual.co, ]
+## dim(ukb)
+
+######################################################################
+## PRS for UKB controls
+subj <- read.delim("~/data/ukb/processed_phenotypes/ukb47653.subj.tsv",
+                   header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+## age >= 65 only 
+age <- 2021 - subj$birthyear
+subj$age <- age
+
+subj <- subj[subj$age >= 65, ]
+dim(subj)
+
+caseids <- read.delim("~/shared/proj/ukb/casedef/ipf_cases.v3.eid",
+                      header=FALSE, stringsAsFactors=FALSE)[, 1] 
+controlids <- read.delim("~/shared/proj/ukb/casedef/ipf_controls.v3.eid",
+                      header=FALSE, stringsAsFactors=FALSE)[, 1] 
+
+subj <- subj[subj$eid %in% c(caseids, controlids), ]
+dim(subj)
+
+subj <- subj[order(subj$eid), ]
+
+##########################
+## Read PRS
+
+files <- list.files("~/shared/analyses/ipf/ukb.prs/")
+files <- files[grep(".qctoolout", files)]
+
+prs <- read.delim(paste("~/shared/analyses/ipf/ukb.prs/", files[1], sep=''),
+                  comment="#", header=TRUE, sep="\t",
+                  stringsAsFactors=FALSE)
+
+for (I in 2:length(files)) {
+    prs0 <-
+        read.delim(paste("~/shared/analyses/ipf/ukb.prs/", files[I], sep=''),
+                   comment="#", header=TRUE, sep="\t",
+                   stringsAsFactors=FALSE)
+    stopifnot(all(prs$sample == prs0$sample))
+    prs[, 3] <- prs[, 3] + prs0[, 3]
+}
+
+colnames(prs)[1] <- "eid"
+colnames(prs)[3] <- "PRS"
+
+prs <- prs[prs$eid %in% subj$eid, ]
+prs <- prs[order(prs$eid), ]
+
+ukb.prs.mean <- mean(prs$PRS)
+ukb.prs.mean
+ukb.prs.sd <- sd(prs$PRS)
+ukb.prs.sd
+
+## standardize including both cases and controls
+prs$PRS <- (prs$PRS - ukb.prs.mean) / ukb.prs.sd
+
+mean(prs$PRS)
+sd(prs$PRS)
+
+###################################
+## Precalculate Sample Index
+## Sample IDs (500K WES)
+ukb.sampleids <-
+    read.delim(paste(ukbpre, "ukbgt/ukb23157_v1.sample_ids", sep=''),
+               header=FALSE, stringsAsFactors=FALSE)[, 1]
+length(ukb.sampleids)
+
+ukbwes.smids <-
+    data.frame(eid=ukb.sampleids, idx=0:(length(ukb.sampleids) - 1))
+ukbwes.smids <- ukbwes.smids[order(ukbwes.smids$eid), ]
+
+ukb.prs0 <- prs[prs$eid %in% ukb.sampleids, ]
+ukb.prs0 <- ukb.prs0[ukb.prs0$eid %in% intersect(subj$eid, controlids), ]
+dim(ukb.prs0)
+
+ukbwes.smids <- ukbwes.smids[ukbwes.smids$eid %in% ukb.prs0$eid, ]
+
+stopifnot(all(ukb.prs0$eid == ukbwes.smids$eid))
+
+sampleidx <- ukbwes.smids$idx
+
+# sampleidx <-
+#    sapply(ukb.prs0$eid, function (id) which(ukb.sampleids == id),
+#           simplify=TRUE) - 1
+
+ukb.prs0 <- cbind(ukb.prs0, IDX=sampleidx)
+
+stopifnot(all(ukb.prs0$eid == ukb.sampleids[ukb.prs0$IDX + 1]))
+
+ukb.prs0 <- ukb.prs0[order(ukb.prs0$IDX), ]
+n.ctrl <- nrow(ukb.prs0)
+n.ctrl
+
+####################
+## PRS for BWH cases
+
+sampleids <- read.delim("../qc/fibrosis_only.freeze_121521.white_probands.ukb_exome_bed.QC136.sample_ids", header=FALSE, stringsAsFactors=FALSE)[, 1]
+length(sampleids)
+
+prstab <- read.delim("../burden/PRS.14SNP_standardized.tsv",
+                     header=TRUE,
+                     sep="\t", stringsAsFactors=FALSE)
+dim(prstab)
+# From original standardization
+# baseline: 0.6058705
+# basevar: 0.9186284
+
+## back to original
+prstab$PRS <- prstab$PRS * sqrt(0.9186284) + 0.6058705
+
+## Re-standarize per UKB population
+prstab$PRS <- (prstab$PRS - ukb.prs.mean) / ukb.prs.sd
+
+prstab <- prstab[prstab$ID %in% sampleids, ]
+dim(prstab)
+
+sampleidx <-
+    sapply(prstab$ID, function (id) which(sampleids == id),
+           simplify=TRUE) - 1
+
+prstab <- cbind(prstab, IDX=sampleidx)
+prstab <- prstab[order(prstab$IDX), ]
+
+n.case <- nrow(prstab)
+
+#################################################################
+## AF matching
+ukbaf <- sapply(which(ipf$key %in% ukb$key), function(I) {
+    ukb[ipf$key[I], AF]
+  }, simplify=TRUE)
+
+ipf <- cbind(ipf, ukbaf=0)
+ipf$ukbaf[which(ipf$key %in% ukb$key)] <- ukbaf
+
+plot(ipf$ukbaf, ipf$AC / 2 / n.case, cex=0.5)
+abline(0, 1)
+
+ipfac <- sapply(which(ukb$key %in% ipf$key), function(I) {
+    ipf$AC[ipf$key == ukb$key[I]]
+  }, simplify=TRUE)
+
+ukb <- cbind(ukb, ipfaf=0)
+ukb$ipfaf[which(ukb$key %in% ipf$key)] <- ipfac / n.case / 2
+
+plot(ukb$AF, ukb$ipfaf, cex=0.5)
+abline(0, 1)
+
+############################
+## by AC
+## ipf[ipf$AC > 10, c("gene", "AC", "ukbaf")]
+## FIXME: AC cutoff changed to 2
+
+AC.new <-
+    sapply(ipf$het,
+           function(x) length(strsplit(x, ",", fixed=TRUE)[[1]]),
+           simplify=TRUE)
+AC.new <- AC.new +
+    sapply(ipf$homalt,
+           function(x) length(strsplit(x, ",", fixed=TRUE)[[1]]),
+           simplify=TRUE)
+# * 2
+
+1 - (dbinom(0, n.case * 2, 0.001) +
+     dbinom(1, n.case * 2, 0.001) + 
+     dbinom(2, n.case * 2, 0.001) +
+     dbinom(3, n.case * 2, 0.001) +
+     dbinom(4, n.case * 2, 0.001))
+     
+## ipf <- ipf[AC.new <= 1, ]
+ipf <- ipf[AC.new <= 2, ]
+dim(ipf)
+
+############
+## AF cutoff
+af.co <- 0.005
+
+cmbaf <- (ukb$AF * n.ctrl * 2 + ukb$ipfaf * n.case * 2) /
+    (n.ctrl * 2 + n.case * 2)
+range(cmbaf)
+
+plot(ukb$AF, cmbaf, cex=0.5)
+abline(0, 1)
+
+ukb <- ukb[cmbaf < af.co, ]
+dim(ukb)
+
+cmbaf <- (ipf$AC + ipf$ukbaf * n.ctrl * 2) /
+    (n.ctrl * 2 + n.case * 2)
+range(cmbaf)
+
+plot(ipf$ukbaf, cmbaf, cex=0.5)
+abline(0, 1)
+
+ipf <- ipf[cmbaf < af.co, ]
+dim(ipf)
+
+############
+## by gnomad
+popmax.af <- 0.005
+
+mean(ipf$key %in% gnomad$key[gnomad$POPMAX > popmax.af])
+mean(ukb$key %in% gnomad$key[gnomad$POPMAX > popmax.af])
+
+ipf <- ipf[!(ipf$key %in% gnomad$key[gnomad$POPMAX > popmax.af]), ]
+ukb <- ukb[!(ukb$key %in% gnomad$key[gnomad$POPMAX > popmax.af]), ]
+dim(ipf)
+dim(ukb)
+
+gc()
+
+######################################################################
+## Parameters
+Kprev <- 0.005
+h2.prs <- 0.18
+
+######################################################################
+## prs rescale
+## prs.coeff <- sqrt(h2.prs / (1 - h2.prs))
+## rescale <- sqrt(1 / (prs.coeff**2 + 1))
+
+## prstab$PRS <- prstab$PRS * prs.coeff * rescale
+## ukb.prs0$PRS <- ukb.prs0$PRS * prs.coeff * rescale
+
+######################################################################
+G <- "ENSG00000140694" # PARN
+G <- "ENSG00000258366" # RTEL1
+G <- "ENSG00000164362" # TERT
+G <- "ENSG00000170801" # HTRA3
+
+cf.co <- 100 / (n.case + n.ctrl)
+
+gamma.seq <- seq(-5, 5, 0.05)
+
+genes <- sort(union(ukb$gene, ipf$gene))
+length(genes)
+
+outcome <- c(rep(1, n.case), rep(0, n.ctrl))
+allprs <- c(prstab$PRS, ukb.prs0$PRS)
+
+llr.list <- c()
+est.gamma.list <- c()
+cf.list <- c()
+af.list <- c()
+case.m.list <- c()
+pv.list <- c()
+
+for (G in genes) {
+    
+    # het and hom
+    case.carriers <-
+        unlist(strsplit(ipf$het[ipf$gene == G], ",", fixed=TRUE))
+    case.carriers <-
+        union(case.carriers,
+              unlist(strsplit(ipf$homalt[ipf$gene == G], ",", fixed=TRUE))
+              )
+    case.carriers <- as.numeric(case.carriers)
+
+    # ukb het and hom
+    ctrl.carriers <-
+        unlist(strsplit(ukb$het[ukb$gene == G], ",", fixed=TRUE))
+    ctrl.carriers <-
+        union(ctrl.carriers,
+              unlist(strsplit(ukb$homalt[ukb$gene == G & !is.na(ukb$homalt)],
+                              ",", fixed=TRUE))
+              )
+
+    case.gt <- matrix(0, nrow=n.case, ncol=1)
+    case.gt[which(prstab$IDX %in% case.carriers), ] <- 1
+
+    ctrl.gt <- matrix(0, nrow=n.ctrl, ncol=1)
+    ctrl.gt[which(ukb.prs0$IDX %in% ctrl.carriers), ] <- 1
+
+    gt <- rbind(case.gt, ctrl.gt)
+
+    cf <- mean(gt > 0)
+    # cf <- mean(ctrl.gt > 0)
+    cf.list <- c(cf.list, cf)
+
+    if (cf >= cf.co) {
+        cat(G, "\n")
+        cat("overall sample caf:", cf, "\n")
+
+        ltbt <- lrt.fe.2df(gamma.seq, gt, allprs, outcome, Kprev, h2.prs)
+
+        if (is.null(h2.prs)) {
+            h2.prs <- ltbt$h2Lx
+        }
+        
+        llr.list <- c(llr.list, ltbt$llr)
+
+        # cat("Pvalue:", pv, "\n")
+        pv.list <- c(pv.list, ltbt$pvalue)
+
+        ## Fishers Exact Test
+        if (FALSE) {
+            m <- matrix(c(sum(case.gt), n.case - sum(case.gt),
+                          sum(ctrl.gt), n.ctrl - sum(ctrl.gt)),
+                        nrow=2, ncol=2)
+            print(m)
+            print(fisher.test(m))
+        }
+    }
+}
+
+datadump <-
+    data.frame(gene=genes[cf.list >= cf.co], cf=cf.list[cf.list >= cf.co], 
+               llr=llr.list,
+               pv=pv.list,
+               stringsAsFactors=FALSE)
+dim(datadump)
+
+datadump <- datadump[order(datadump$pv, decreasing=FALSE), ]
+head(datadump)
+
+geneinfo <- read.delim("~/data/ensembl/ensembl_gene_109.TSS.b38_p13.tsv",
+                       header=T, stringsAsFactors=F, sep="\t")
+dim(geneinfo)
+
+symbol <- sapply(datadump$gene,
+                 function (s) geneinfo$HGNC.symbol[geneinfo$Gene == s][1],
+                 simplify=TRUE)
+desc <- sapply(datadump$gene,
+                 function (s) geneinfo$Gene.description[geneinfo$Gene == s][1],
+                 simplify=TRUE)
+
+datadump <- cbind(datadump, symbol=symbol, desc=desc)
+ 
+unique(geneinfo$Transcript.type)
+
+geneinfo <- geneinfo[geneinfo$HGNC.symbol != "", ]
+dim(geneinfo)
+
+geneinfo <- geneinfo[geneinfo$Transcript.type %in% c( "protein_coding" ),  ]
+dim(geneinfo)
+geneinfo <- geneinfo[-grep("pseudogene", geneinfo$Gene.description), ]
+dim(geneinfo)
+geneinfo <- geneinfo[-grep("readthrough", geneinfo$Gene.description), ]
+dim(geneinfo)
+
+# autosomes only 
+geneinfo <- geneinfo[geneinfo$Chr %in% as.character(c(1:22)), ]
+dim(geneinfo)
+
+datadump <- datadump[datadump$gene %in% geneinfo$Gene, ]
+dim(datadump)
+
+# FDR
+fdr <- datadump$pv * nrow(datadump) / c(1:nrow(datadump))
+fdr[fdr > 1] <- 1
+datadump <- cbind(datadump, fdr=fdr)
+
+write.table(datadump, file="bwh.fe.nsn.wes500k.ltbt.tsv", col.names=TRUE,
+            row.names=FALSE, quote=FALSE, sep="\t")
+
+# save.image("bwh.fe.nsn.wes500k.ltbt.251103.RData")
+
+#########################################################################
+## Q-Q plot
+
+exp <- sort(-log10(runif(nrow(datadump))))
+obs <- sort(-log10(datadump$pv))
+
+plot(exp, obs, pch=19, xlim=c(0, 5.5), ylim=c(0, 5.5))
+abline(0, 1, lwd=2)
+
+# 95%
+# e.ref <- exp[round(length(exp) * 0.95)]
+# o.ref <- obs[round(length(exp) * 0.95)]
+
+# 50%
+e.ref <- exp[round(length(exp) * 0.5)]
+o.ref <- obs[round(length(exp) * 0.5)]
+
+slope <- (o.ref - 0) / (e.ref - 0)
+yint <- o.ref - slope*e.ref
+slope
+yint
+
+# Lambda 
+# 0.9777084
+
+abline(yint, slope, col="red", lwd=2)
+
+# dev.copy2pdf(file="bwh.fe.nsn.wes500k.ltbt.qq.pdf")
+
