@@ -64,7 +64,7 @@ ukb <- as.data.table(ukb)
 setkey(ukb, key)
 
 ## Read QC-failed variants from UKB exome VCF
-## See ukb_variant_qc.py
+## See variant_qc.py
 ukb.qcfail.key <- READ.UKB.QCFAIL.VARIDS()
 
 ########################################################################
@@ -232,6 +232,7 @@ keys <- paste(ipf$locus.contig, ipf$locus.position, A1, A2, sep="_")
 ipf <- cbind(ipf, key=keys, stringsAsFactors=FALSE)
 
 ## Read QC-failed variants from CGS-PF exome VCF
+## See variant_qc.py
 ipf.qcfail.key <- READ.CGSPF.QCFAIL.VARIDS()
 
 ## ---------------------------------------------------------------------
