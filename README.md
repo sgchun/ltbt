@@ -34,7 +34,17 @@ We provide a deidentified summary-level sample test data [RTEL1.tsv](https://git
 LTBT returns the estimated heritability explained by PRS (```h2Lx```), p-value of nested likelihood ratio test (```pvalue```), and most likely effect size of rare variants (```gamma.mle```). The curve of log likelihood ratio can be plotted as shown below: 
 ![LTBT Log Likelihood Ratio Curve](RTEL1.llr.png)
 
-## Support codes
+## Data processing pipeline
+We provide QC and data processing pipelines used in the IPF study (Chun et al.)
+1. Discovery cohort (CGS-PF + UK Biobank)
+   * [Allen2019.14SNPs.qctool.txt](https://github.com/sgchun/ltbt/blob/main/discovery/Allen2019.14SNPs.qctool.txt): 14-SNP PRS model for QCTools (Genome assembly: GRCh37).
+   * [variant_qc.py](https://github.com/sgchun/ltbt/blob/main/discovery/variant_qc.py): Hail script for Whole-Exome Sequence variant QC for CGS-PF and UK Biobank based on DNA Nexus cloud platform.
+   * [data-cleanup.cgspf-ukb.R](https://github.com/sgchun/ltbt/blob/main/discovery/data-cleanup.cgspf-ukb.R): Data harmonization codes for CGS-PF cases and UK Biobank controls.
+
+3. Validation cohort (All of Us)
+   * [Allen2019.13SNPs.b38.qctool.txt](https://github.com/sgchun/ltbt/blob/main/validation/Allen2019.13SNPs.b38.qctool.txt): 13-SNP PRS model for QCTools (Genome assembly: GRCh38). One SNP in 14-SNP PRS model (rs2077551) is missing in All of Us ACAF variant set.
+   * [Calculate_PRS.py](https://github.com/sgchun/ltbt/blob/main/validation/Calculate_PRS.py): Hail-based PRS calculation script for All of Us Workbench cloud platform.
+   * [data-cleanup.allofus.py](https://github.com/sgchun/ltbt/blob/main/validation/data-cleanup.allofus.py): Case/control definition script for All of Us Workbench cloud platform. 
 
 ## Citation
 > Sung Chun*, Ahmad Samiei, Lauren Flynn, Heidi Makrynioti, Matthew Moll, Anna L. Peljto,
