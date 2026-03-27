@@ -11,7 +11,7 @@ LTBT is implemented as an R module. Please download and install [the LTBT R modu
    R CMD install ltbt_1.0.tar.gz
    ```
 ## How to Run LTBT
-We provide a deidentified summary-level sample test data [RTEL1.tsv](https://github.com/sgchun/ltbt/blob/main/RTEL1.tsv) and test code [test.r](https://github.com/sgchun/ltbt/blob/main/test.r). 
+We provide a deidentified summary-level sample test data [RTEL1.tsv](https://github.com/sgchun/ltbt/blob/main/RTEL1.tsv) and test code [test.r](https://github.com/sgchun/ltbt/blob/main/test.r). LTBT scans the likelihood space in a grid search. We recommend the search space of rare-variant effect (```gamma.seq```) as below. LTBT test (```run.ltbt()```) requires the genotypes, polygenic risk scores (PRS), outcomes for all subjects in a cohort, along with the disease prevalence in an unascertained population (```0.005``` in this case). The genotypes are encoded as 0 or 1, respectively, depending on whether an individual carries a functional rare variant or not. The PRS should be standardized to the mean of 0 and variance of 1 in an unascertained population. The outcomes are represented as 0 or 1 for controls and cases, respectively. 
    ```R
    library(ltbt)
 
@@ -31,12 +31,16 @@ We provide a deidentified summary-level sample test data [RTEL1.tsv](https://git
    plot(res$gamma, res$logL, ty="l", xlab="gamma", ylab="Log Likelihood Ratio")
    abline(v=res$gamma.mle, col="red", lty=2)
    ```
+LTBT returns the estimated heritability explained by PRS (```h2Lx```), p-value of nested likelihood ratio test (```pvalue```), and most likely effect size of rare variants (```gamma.mle```). The curve of log likelihood ratio can be plotted as shown below: 
 ![LTBT Log Likelihood Ratio Curve](RTEL1.llr.png)
+
+## Support codes
 
 ## Citation
 > Sung Chun*, Ahmad Samiei, Lauren Flynn, Heidi Makrynioti, Matthew Moll, Anna L. Peljto,
 > David A. Schwartz, Michael H Cho, Shamil R Sunyaev, Ivan O Rosas, Gary M. Hunninghake,
 > and Benjamin A Raby*. A new liability-based rare-variant burden test identifies a novel
 > genetic association between HTRA3 and idiopathic pulmonary fibrosis. 
-> (Preprint will be available soon)> * Joint contribution.
+> (Preprint will be available soon)  
+> * Joint correspondence.
 
