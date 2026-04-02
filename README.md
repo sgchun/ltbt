@@ -1,7 +1,7 @@
 # Liability Threshold Burden Test (LTBT)
 LTBT implements a novel rare-variant association test for binary traits that jointly models the contribution of rare variants and PRS under a liability threshold model. We define the total liability as the additive sum of rare-variant effect (γ), PRS, and unexplained risk factors (**Figure A**). Under a liability threshold model, the disease outcome is determined by whether an individual’s total liability is over the threshold determined by the prevalence of disease in population. By modeling the conditional distribution of PRS given the rare variant effect size γ (**Figure B**), we compare the likelihood of observed data under the null (γ=0) and alternative (γ≠0) hypotheses. 
 
-![LTBT overview figure](LTBT-GitHub-Fig.png)
+<img src="LTBT-GitHub-Fig.png" width="750">
 
 For inquiries on LTBT, please contact Sung Chun (sung.g.chun@gmail.com). 
 
@@ -13,10 +13,10 @@ LTBT is implemented as an R module. Please download and install [the LTBT R modu
 ## How to Run LTBT
 We provide a sample test dataset [RTEL1.tsv](https://github.com/sgchun/ltbt/blob/main/RTEL1.tsv) and test code [test.r](https://github.com/sgchun/ltbt/blob/main/test.r).  
 
-RTEL1.tsv contains deidentified summary-level data for the gene Regulator of Telomere Elongation Helicase 1 (RTEL1), a known familial pulmonary fibrosis gene. The file contains PRS values for 136 IPF cases and 230,496 healthy controls (**Figure C**). Of the 136 cases, 3 subjects carry a rare predicted loss-of-function (pLoF) variant in RTEL1. In comparison, 127 control subjects carry such a rare pLoF variant. The PRS value is pre-standardized to the mean of 0 and variance of 1 in an unascertained population of European ancestry. PRS was calculated by aggregating risk allele dosages weighted by their GWAS effect over 14 GWAS SNPs. In Figure C, black dots indicate PRS values for RTEL1 pLoF carriers. Violin plots represent the overall distribution of PRS among non-carriers. Note the average PRS of pLoF-carrying patients is closer to 0 compared to non-carrier patients, suggesting the former does not need a strong disease-predisposing PRS to manifest disease. 
-![RTEL1 data overview figure](RTEL1.prsdist.png)
+**RTEL1.tsv** contains deidentified summary-level data for the gene Regulator of Telomere Elongation Helicase 1 (RTEL1), a known familial pulmonary fibrosis gene. The file contains PRS values for 136 IPF cases and 230,496 healthy controls (**Figure C**). Of the 136 cases, 3 subjects carry a rare predicted loss-of-function (pLoF) variant in RTEL1. In comparison, 127 control subjects carry such a rare pLoF variant. The PRS value is pre-standardized to the mean of 0 and variance of 1 in an unascertained population of European ancestry. PRS was calculated by aggregating risk allele dosages weighted by their GWAS effect over 14 GWAS SNPs. In Figure C, black dots indicate PRS values for RTEL1 pLoF carriers. Violin plots represent the overall distribution of PRS among non-carriers. Note the average PRS of pLoF-carrying patients is closer to 0 compared to non-carrier patients, suggesting the former does not need a strong disease-predisposing PRS to manifest disease.  
+<img src="RTEL1.prsdist.png" width="500">
 
-LTBT scans the likelihood space in a grid search. We recommend the search space of rare-variant effect (```gamma.seq```) as below. LTBT test (```run.ltbt()```) requires the genotypes, polygenic risk scores (PRS), outcomes for all subjects in a cohort, along with the disease prevalence in an unascertained population (```0.005``` in this case). The genotypes are encoded as 0 or 1, respectively, depending on whether an individual carries a functional rare variant or not. The PRS should be standardized to the mean of 0 and variance of 1 in an unascertained population. The outcomes are represented as 0 or 1 for controls and cases, respectively. 
+LTBT scans the likelihood space in a grid search. We recommend the search space of rare-variant effect (```gamma.seq```) as shown in **test.r** below. LTBT test (```run.ltbt()```) requires the genotypes, polygenic risk scores (PRS), outcomes for all subjects in a cohort, along with the disease prevalence in an unascertained population (```0.005``` in this case). The genotypes are encoded as 0 or 1, respectively, depending on whether an individual carries a functional rare variant or not. The PRS should be standardized to the mean of 0 and variance of 1 in an unascertained population. The outcomes are represented as 0 or 1 for controls and cases, respectively. 
    ```R
    library(ltbt)
 
@@ -37,7 +37,7 @@ LTBT scans the likelihood space in a grid search. We recommend the search space 
    abline(v=res$gamma.mle, col="red", lty=2)
    ```
 LTBT returns the estimated heritability explained by PRS (```h2Lx```), p-value of nested likelihood ratio test (```pvalue```), and most likely effect size of rare variants (```gamma.mle```). The curve of log likelihood ratio can be plotted as shown below: 
-![LTBT Log Likelihood Ratio Curve](RTEL1.llr.png)
+<img src="RTEL1.llr.png" width="400">
 
 ## Data processing pipeline
 We provide QC and data processing pipelines used in the IPF study (Chun et al.)
