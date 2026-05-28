@@ -1,7 +1,7 @@
 Package: ltbt
 Type: Package
 Title: Liability Threshold Burden Test (LTBT)
-Version: 1.0
+Version: 1.0.1
 Authors@R: c(person("Sung", "Chun", role = c("aut", "cre"),
 	         email = "sung.g.chun@gmail.com"))
 Author: Sung Chun [aut, cre]

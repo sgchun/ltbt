@@ -272,3 +272,23 @@ run.ltbt <- function (gamma.seq, gt, prs, outcome, Kprev.x, h2.prs.x=NULL) {
          caf.mle=caf[maxL.idx],
          logL=logL)
 }
+
+#' Calculate the confidence interval based on the profile likelihood curve
+#'
+#' @param ltbt a ltbt result object from run.ltbt() function
+#' @param conf.level a confidence level (95% by default)
+#'
+#' @return a range of confidence interval 
+#' @export 
+ci <- function (ltbt, conf.level = 0.95) {
+
+    gamma.mle <- ltbt$gamma.mle
+    gamma <- ltbt$gamma
+    logL <- ltbt$logL
+    max.logL <- max(logL)
+
+    logL.co <- max.logL - qchisq(conf.level, df=1) / 2
+
+    gamma.ci <- gamma[logL >= logL.co] 
+    range(gamma.ci)
+}
